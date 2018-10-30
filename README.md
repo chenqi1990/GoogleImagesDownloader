@@ -1,6 +1,10 @@
 # GoogleImagesDownloader
 
-This repository can download images from google with specified keywords
+This repository can download images from google, bing and baidu with specified keywords
+```
+python download_with_selenium.py --config_file=keywords.conf --topic_name=topic_test
+python download_urls.py --urls_file=topic_test_baidu_url.txt --thread_num=4 --dst_folder=data/imgs
+```
 
 ## Requirements
 
