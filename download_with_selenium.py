@@ -10,14 +10,10 @@ import time
 import logging
 import fire
 import configparser
-import urllib.request
-import urllib.error
-from urllib.parse import urlparse
 
 from multiprocessing import Pool
-from user_agent import generate_user_agent
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
+
 
 def check():
     file_name = 'geckodriver'
@@ -27,74 +23,77 @@ def check():
             os.system(cmd)
             cmd = "tar -zxf geckodriver-v0.23.0-macos.tar.gz"
             os.system(cmd)
-            os.system("export PATH=%s:$PATH" % os.getcwd())
         except Exception as e:
             logging.error("install geckodriver failed")
             return False
     return True
 
+
 def get_image_links_tuchong_community(main_keyword, supplemented_keywords, link_file_path):
     """get image links with selenium
-    
+
     Args:
         main_keyword (str): main keyword
         supplemented_keywords (list[str]): list of supplemented keywords
         link_file_path (str): path of the file to store the links
         num_requested (int, optional): maximum number of images to download
-    
+
     Returns:
         None
     """
-    number_of_scrolls = int(num_requested / 400) + 1 
-    # number_of_scrolls * 400 images will be opened in the browser
-
     img_urls = set()
-    driver = webdriver.Firefox()
-    for i in range(len(supplemented_keywords)):
-        search_query = main_keyword + ' ' + supplemented_keywords[i]
-        url = "https://tuchong.com/search/post/?query="+search_query
-        driver.get(url)
-        
-        for _ in range(number_of_scrolls):
+    try:
+        driver = webdriver.Firefox(executable_path='./geckodriver')
+        for i in range(len(supplemented_keywords)):
+            search_query = main_keyword + supplemented_keywords[i]
+            url = "https://tuchong.com/search/post/?query="+search_query
+            print('url = %s' % url)
+            driver.get(url)
+
             for __ in range(10000000):
                 # multiple scrolls needed to show all 400 images
                 driver.execute_script("window.scrollBy(0, 1000)")
                 time.sleep(2)
                 end = driver.find_element_by_xpath('//i[contains(@class, "icon-end")]')
-                if end[0].getAttribute('style') == '':
+                if end.get_attribute('style') == '':
+                    print("finished")
                     break
             time.sleep(5)
 
-        imges = driver.find_elements_by_xpath('//div[@data-lazy-url]')
-        for img in imges:
-            img_url = img.getAttribute('data-lazy-url')
-            if img_url is None:
-                continue
-            # img_type = json.loads(img.get_attribute('innerHTML'))["ity"]
-            img_urls.add('https:' + img_url)
-        print('Process-{0} add keyword {1} , got {2} image urls so far'.format(main_keyword, supplemented_keywords[i], len(img_urls)))
-    print('Process-{0} totally get {1} images'.format(main_keyword, len(img_urls)))
-    driver.quit()
+            imges = driver.find_elements_by_xpath('//div[@data-lazy-url]')
+            print("imges = %s" % len(imges))
+            for img in imges:
+                img_url = img.get_attribute('data-lazy-url')
+                if img_url is None:
+                    continue
+                # img_type = json.loads(img.get_attribute('innerHTML'))["ity"]
+                img_urls.add('https:' + img_url)
+            print('Process-{0} add keyword {1} , got {2} image urls so far'.format(main_keyword, supplemented_keywords[i], len(img_urls)))
+        print('Process-{0} totally get {1} images'.format(main_keyword, len(img_urls)))
+        driver.quit()
+    except Exception as e:
+        print(e)
 
     with open(link_file_path, 'w') as wf:
         for url in img_urls:
             wf.write(url +'\n')
-    print('Tuchong: Store all the links in file {0}'.format(link_file_path))
+    print('Tuchong Community: Store all the links in file {0}'.format(link_file_path))
+
 
 def get_image_links_tuchong(main_keyword, supplemented_keywords, link_file_path):
     """get image links with selenium
-    
+
     Args:
         main_keyword (str): main keyword
         supplemented_keywords (list[str]): list of supplemented keywords
         link_file_path (str): path of the file to store the links
         num_requested (int, optional): maximum number of images to download
-    
+
     Returns:
         None
     """
     img_urls = set()
-    driver = webdriver.Firefox()
+    driver = webdriver.Firefox(executable_path='./geckodriver')
     for i in range(len(supplemented_keywords)):
         search_query = main_keyword + supplemented_keywords[i]
         url = "https://stock.tuchong.com/search?term=" + search_query
@@ -122,9 +121,7 @@ def get_image_links_tuchong(main_keyword, supplemented_keywords, link_file_path)
             # to load next 400 images
             time.sleep(3)
             try:
-                print("click");
                 driver.find_element_by_xpath('//a[contains(@class,"page-next")]').click()
-                print("click");
             except Exception as e:
                 print("Process-{0} reach the end of page or get the maximum number of requested images".format(main_keyword))
                 break
@@ -141,26 +138,26 @@ def get_image_links_tuchong(main_keyword, supplemented_keywords, link_file_path)
 
 def get_image_links_google(main_keyword, supplemented_keywords, link_file_path, num_requested = 1000):
     """get image links with selenium
-    
+
     Args:
         main_keyword (str): main keyword
         supplemented_keywords (list[str]): list of supplemented keywords
         link_file_path (str): path of the file to store the links
         num_requested (int, optional): maximum number of images to download
-    
+
     Returns:
         None
     """
-    number_of_scrolls = int(num_requested / 400) + 1 
+    number_of_scrolls = int(num_requested / 400) + 1
     # number_of_scrolls * 400 images will be opened in the browser
 
     img_urls = set()
-    driver = webdriver.Firefox()
+    driver = webdriver.Firefox(executable_path='./geckodriver')
     for i in range(len(supplemented_keywords)):
         search_query = main_keyword + ' ' + supplemented_keywords[i]
         url = "https://www.google.com/search?q="+search_query+"&source=lnms&tbm=isch"
         driver.get(url)
-        
+
         for _ in range(number_of_scrolls):
             for __ in range(10):
                 # multiple scrolls needed to show all 400 images
@@ -192,24 +189,24 @@ def get_image_links_google(main_keyword, supplemented_keywords, link_file_path, 
 
 def get_image_links_baidu(main_keyword, supplemented_keywords, link_file_path):
     """get image links with selenium
-    
+
     Args:
         main_keyword (str): main keyword
         supplemented_keywords (list[str]): list of supplemented keywords
         link_file_path (str): path of the file to store the links
         num_requested (int, optional): maximum number of images to download
-    
+
     Returns:
         None
     """
 
     img_urls = set()
-    driver = webdriver.Firefox()
+    driver = webdriver.Firefox(executable_path='./geckodriver')
     for i in range(len(supplemented_keywords)):
         search_query = main_keyword + ' ' + supplemented_keywords[i]
         url = "https://image.baidu.com/search/index?tn=baiduimage&word="+search_query+"&ie=utf-8"
         driver.get(url)
-        
+
         for __ in range(30):
             # multiple scrolls needed to show all 400 images
             driver.execute_script("window.scrollBy(0, 1000000)")
@@ -237,24 +234,24 @@ def get_image_links_baidu(main_keyword, supplemented_keywords, link_file_path):
 
 def get_image_links_bing(main_keyword, supplemented_keywords, link_file_path):
     """get image links with selenium
-    
+
     Args:
         main_keyword (str): main keyword
         supplemented_keywords (list[str]): list of supplemented keywords
         link_file_path (str): path of the file to store the links
         num_requested (int, optional): maximum number of images to download
-    
+
     Returns:
         None
     """
 
     img_urls = set()
-    driver = webdriver.Firefox()
+    driver = webdriver.Firefox(executable_path='./geckodriver')
     for i in range(len(supplemented_keywords)):
         search_query = main_keyword + ' ' + supplemented_keywords[i]
         url = "https://www.bing.com/images/search?q="+search_query+"&adlt=False"
         driver.get(url)
-        
+
         for __ in range(30):
             # multiple scrolls needed to show all 400 images
             driver.execute_script("window.scrollBy(0, 1000000)")
@@ -306,7 +303,7 @@ def main(config_file, topic_name):
     ###################################
     # get image links and store in file
     ###################################
-    
+
 
     os.system("mkdir %s" % result_dir)
     os.system("mkdir %s/%s" % (result_dir, topic_name))
