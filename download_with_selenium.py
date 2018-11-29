@@ -29,6 +29,61 @@ def check():
     return True
 
 
+def get_image_links_vcg(main_keyword, supplemented_keywords, link_file_path):
+    """get image links with selenium
+
+    Args:
+        main_keyword (str): main keyword
+        supplemented_keywords (list[str]): list of supplemented keywords
+        link_file_path (str): path of the file to store the links
+        num_requested (int, optional): maximum number of images to download
+
+    Returns:
+        None
+    """
+    img_urls = set()
+
+    try:
+        driver = webdriver.Firefox(executable_path='./geckodriver')
+        for i in range(len(supplemented_keywords)):
+            search_query = main_keyword + supplemented_keywords[i]
+            url = "https://www.vcg.com/creative/search_2?phrase=" + search_query
+            driver.get(url)
+            driver.refresh()
+            for page_id in range(300):
+                print('page_id = %s' % page_id)
+                for __ in range(10):
+                    # multiple scrolls needed to show all 400 images
+                    driver.execute_script("window.scrollBy(0, 1000)")
+                    time.sleep(1)
+
+                imges = driver.find_elements_by_xpath('//a[contains(@class, "imgWaper")]//img')
+                for img in imges:
+                    img_url = img.get_attribute('src')
+                    if img_url is None:
+                        continue
+                    img_urls.add(img_url)
+                print("img urls = %s" % len(img_urls))
+                # to load next 400 images
+                time.sleep(2)
+                try:
+                    driver.find_element_by_xpath('//div[contains(@class,"nextpage")]').click()
+                except Exception as e:
+                    print("Process-{0} reach the end of page or get the maximum number of requested images".format(main_keyword))
+                    break
+            print('Process-{0} add keyword {1} , got {2} image urls so far'.format(main_keyword, supplemented_keywords[i], len(img_urls)))
+    except Exception as e:
+        print(e)
+
+    print('Process-{0} totally get {1} images'.format(main_keyword, len(img_urls)))
+    driver.quit()
+
+    with open(link_file_path, 'w') as wf:
+        for url in img_urls:
+            wf.write(url +'\n')
+    print('Vcg: Store all the links in file {0}'.format(link_file_path))
+
+
 def get_image_links_veer(main_keyword, supplemented_keywords, link_file_path):
     """get image links with selenium
 
@@ -50,7 +105,7 @@ def get_image_links_veer(main_keyword, supplemented_keywords, link_file_path):
             url = "https://www.veer.com/query/image?phrase=" + search_query
             driver.get(url)
             driver.refresh()
-            for page_id in range(5000000):
+            for page_id in range(300):
                 print('page_id = %s' % page_id)
                 for __ in range(10):
                     # multiple scrolls needed to show all 400 images
@@ -378,6 +433,8 @@ def main(config_file, topic_name):
                 p.apply_async(get_image_links_tuchong_community, args=(keyword, supplemented_keywords, link_file_path))
             elif engine == 'veer':
                 p.apply_async(get_image_links_veer, args=(keyword, supplemented_keywords, link_file_path))
+            elif engine == 'vcg':
+                p.apply_async(get_image_links_vcg, args=(keyword, supplemented_keywords, link_file_path))
             else:
                 p.apply_async(get_image_links_baidu, args=(keyword, supplemented_keywords, link_file_path))
         p.close()
