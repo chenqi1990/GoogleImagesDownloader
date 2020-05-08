@@ -10,6 +10,7 @@ import time
 import logging
 import fire
 import configparser
+from urllib.parse import unquote
 
 from multiprocessing import Pool
 from selenium import webdriver
@@ -276,15 +277,26 @@ def get_image_links_google(main_keyword, supplemented_keywords, link_file_path, 
             # to load next 400 images
             time.sleep(5)
             try:
-                driver.find_element_by_xpath("//input[@value='显示更多结果']").click()
+                driver.find_element_by_xpath("//input[contains(@class, 'mye4qd')]").click()
             except Exception as e:
                 print("Process-{0} reach the end of page or get the maximum number of requested images".format(main_keyword))
                 break
 
         # imges = driver.find_elements_by_xpath('//div[@class="rg_meta"]') # not working anymore
-        imges = driver.find_elements_by_xpath('//div[contains(@class,"rg_meta")]')
+        # imges = driver.find_elements_by_xpath('//div[contains(@class,"rg_meta")]')  # not working anymore
+        imges = driver.find_elements_by_xpath('//a[contains(@class,"wXeWr")]')
+        if len(imges) <= 0:
+            continue
         for img in imges:
-            img_url = json.loads(img.get_attribute('innerHTML'))["ou"]
+            img.click()
+            img.click()
+            img_url = img.get_attribute('href')
+            try:
+                img_url = img_url.split('imgurl=')[1].split('&imgrefurl=')[0]
+                img_url = unquote(img_url)
+            except Exception as e:
+                continue
+            print(img_url)
             # img_type = json.loads(img.get_attribute('innerHTML'))["ity"]
             img_urls.add(img_url)
         print('Process-{0} add keyword {1} , got {2} image urls so far'.format(main_keyword, supplemented_keywords[i], len(img_urls)))
