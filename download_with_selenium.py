@@ -288,13 +288,16 @@ def get_image_links_google(main_keyword, supplemented_keywords, link_file_path, 
         if len(imges) <= 0:
             continue
         for img in imges:
-            img.click()
-            img.click()
-            img_url = img.get_attribute('href')
+            img_url = None
             try:
+                img.click()
+                img.click()
+                img_url = img.get_attribute('href')
                 img_url = img_url.split('imgurl=')[1].split('&imgrefurl=')[0]
                 img_url = unquote(img_url)
             except Exception as e:
+                continue
+            if img_url is None:
                 continue
             print(img_url)
             # img_type = json.loads(img.get_attribute('innerHTML'))["ity"]
